@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Emaadali\PestNeondbPlugin;
 
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\ServiceProvider;
@@ -78,6 +79,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
 
             config(['services.neon.testing_worker_branch_id' => $branchId]);
             $this->applyDatabaseHost($host);
+            RefreshDatabaseState::$migrated = true;
 
             NeonDebug::log('worker-applied-in-test-process', [
                 'parallel_token' => $token,
@@ -90,6 +92,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 'database.connections.pgsql.database' => config('database.connections.pgsql.database'),
                 'database.connections.pgsql.username' => config('database.connections.pgsql.username'),
                 'database.connections.pgsql.password' => config('database.connections.pgsql.password'),
+                'refresh_database_state.migrated' => RefreshDatabaseState::$migrated,
             ]);
 
             NeonDebug::dumpAndExitIfRequested('worker-applied-in-test-process', [
@@ -103,6 +106,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 'database.connections.pgsql.database' => config('database.connections.pgsql.database'),
                 'database.connections.pgsql.username' => config('database.connections.pgsql.username'),
                 'database.connections.pgsql.password' => config('database.connections.pgsql.password'),
+                'refresh_database_state.migrated' => RefreshDatabaseState::$migrated,
             ]);
         });
 
