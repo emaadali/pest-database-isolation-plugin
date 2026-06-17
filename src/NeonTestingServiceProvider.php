@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Emaadali\PestNeondbPlugin;
 
-use Illuminate\Foundation\Testing\RefreshDatabaseState;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\ServiceProvider;
@@ -27,7 +25,6 @@ final class NeonTestingServiceProvider extends ServiceProvider
 
             if (! NeonEnvironment::runningInParallel() && NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST') !== null) {
                 $this->applyDatabaseHost(NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'));
-                RefreshDatabaseState::$migrated = true;
             }
         }
 
@@ -72,8 +69,6 @@ final class NeonTestingServiceProvider extends ServiceProvider
 
         config(['services.neon.testing_worker_branch_id' => self::$workerBranch->id]);
         $this->applyDatabaseHost(self::$workerBranch->host);
-        Artisan::call('migrate');
-        RefreshDatabaseState::$migrated = true;
     }
 
     private function applyDatabaseHost(string $host): void
