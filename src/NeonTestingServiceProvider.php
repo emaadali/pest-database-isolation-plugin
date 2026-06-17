@@ -25,7 +25,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 : ($_SERVER['LARAVEL_PARALLEL_TESTING_'.strtoupper($option)] ?? false));
 
             if (! NeonEnvironment::runningInParallel() && NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST') !== null) {
-                $this->applyDatabaseHost(NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_POOLER_HOST') ?? NeonEnvironment::required('DB_HOST'));
+                $this->applyDatabaseHost(NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'));
                 RefreshDatabaseState::$migrated = true;
             }
         }
@@ -72,7 +72,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
         $workerBranch = self::$workerBranch;
 
         config(['services.neon.testing_worker_branch_id' => $workerBranch->id]);
-        $this->applyDatabaseHost($workerBranch->poolerHost ?? $workerBranch->host);
+        $this->applyDatabaseHost(NeonEnvironment::directHost($workerBranch->host));
         RefreshDatabaseState::$migrated = true;
 
         NeonEnvironment::applyDatabaseEnvironment($workerBranch);
