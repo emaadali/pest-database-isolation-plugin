@@ -83,18 +83,27 @@ final class NeonEnvironment
 
     public static function applyDatabaseEnvironment(NeonBranch $branch): void
     {
+        $databaseHost = self::databaseHost($branch);
+        $directHost = self::directHost($branch->host);
+
         self::set('DB_CONNECTION', 'pgsql');
-        self::set('DB_HOST', self::directHost($branch->host));
+        self::set('DB_HOST', $databaseHost);
         self::set('DB_PORT', self::file('DB_PORT') ?? self::optional('DB_PORT') ?? '5432');
         self::set('DB_DATABASE', self::file('DB_DATABASE') ?? self::optional('DB_DATABASE') ?? '');
         self::set('DB_USERNAME', self::file('DB_USERNAME') ?? self::optional('DB_USERNAME') ?? '');
         self::set('DB_PASSWORD', self::file('DB_PASSWORD') ?? self::optional('DB_PASSWORD') ?? '');
         self::set('NEON_TEST_WORKER_BRANCH_ID', $branch->id);
-        self::set('NEON_TEST_WORKER_BRANCH_HOST', self::directHost($branch->host));
+        self::set('NEON_TEST_WORKER_BRANCH_HOST', $databaseHost);
+        self::set('NEON_TEST_WORKER_BRANCH_DIRECT_HOST', $directHost);
 
         if ($branch->poolerHost !== null) {
             self::set('NEON_TEST_WORKER_BRANCH_POOLER_HOST', $branch->poolerHost);
         }
+    }
+
+    public static function databaseHost(NeonBranch $branch): string
+    {
+        return $branch->poolerHost ?? self::poolerHost(self::directHost($branch->host));
     }
 
     public static function directHost(string $host): string

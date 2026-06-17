@@ -12,8 +12,6 @@ function usesNeonTestingRootBranch(): void
         $GLOBALS['__pest_neondb_test_started_at'] = hrtime(true);
         NeonTiming::log('pest.test.beforeEach.start');
 
-        NeonTestingRuntime::switchToPoolerHost();
-
         NeonTiming::log('pest.test.beforeEach.end');
     });
 

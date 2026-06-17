@@ -32,11 +32,15 @@ final class NeonTestingServiceProvider extends ServiceProvider
             if (! NeonEnvironment::runningInParallel() && NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST') !== null) {
                 $startedAt = hrtime(true);
 
-                $this->applyDatabaseHost(NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'));
+                $configuredHost = NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST');
+
+                $this->applyDatabaseHost($configuredHost);
                 RefreshDatabaseState::$migrated = true;
 
                 NeonTiming::log('provider.nonparallel-worker.applied', [
-                    'host' => NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'),
+                    'configured_host' => $configuredHost,
+                    'direct_host' => NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_DIRECT_HOST'),
+                    'pooler_host' => NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_POOLER_HOST'),
                     'duration_ms' => $this->durationMs($startedAt),
                 ]);
             }
@@ -108,9 +112,10 @@ final class NeonTestingServiceProvider extends ServiceProvider
         }
 
         $workerBranch = self::$workerBranch;
+        $configuredHost = NeonEnvironment::databaseHost($workerBranch);
 
         config(['services.neon.testing_worker_branch_id' => $workerBranch->id]);
-        $this->applyDatabaseHost(NeonEnvironment::directHost($workerBranch->host));
+        $this->applyDatabaseHost($configuredHost);
         RefreshDatabaseState::$migrated = true;
 
         NeonEnvironment::applyDatabaseEnvironment($workerBranch);
@@ -118,7 +123,8 @@ final class NeonTestingServiceProvider extends ServiceProvider
         NeonTiming::log('provider.worker.apply.end', [
             'token' => $token,
             'branch_id' => $workerBranch->id,
-            'host' => $workerBranch->host,
+            'configured_host' => $configuredHost,
+            'direct_host' => NeonEnvironment::directHost($workerBranch->host),
             'pooler_host' => $workerBranch->poolerHost,
             'duration_ms' => $this->durationMs($startedAt),
         ]);

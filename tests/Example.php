@@ -60,7 +60,7 @@ it('synthesizes a pooler host when no pooler host is returned', function (): voi
     ]);
 });
 
-it('converts pooled endpoint hosts to direct hosts for test database connections', function (): void {
+it('converts pooled endpoint hosts to direct hosts', function (): void {
     expect(NeonEnvironment::directHost('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech'))
         ->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
 });
@@ -68,6 +68,24 @@ it('converts pooled endpoint hosts to direct hosts for test database connections
 it('converts direct endpoint hosts to pooler hosts', function (): void {
     expect(NeonEnvironment::poolerHost('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech'))
         ->toBe('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech');
+});
+
+it('uses the pooler host for worker database connections', function (): void {
+    $branch = new NeonBranch(
+        id: 'br-worker',
+        name: 'worker',
+        host: 'ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech',
+        poolerHost: 'ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech',
+    );
+
+    NeonEnvironment::applyDatabaseEnvironment($branch);
+
+    expect(NeonEnvironment::optional('DB_HOST'))
+        ->toBe('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech')
+        ->and(NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST'))
+        ->toBe('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech')
+        ->and(NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_DIRECT_HOST'))
+        ->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
 });
 
 it('detects parallel CLI requests from argv', function (): void {
