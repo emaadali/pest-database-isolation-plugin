@@ -29,3 +29,9 @@ NEON_TEST_BRANCH_TTL_SECONDS=21600
 ```
 
 The root schema-only test branch is created once per Pest run and deleted when the parent test process exits. Laravel parallel workers automatically create expiring child branches from that root branch and point the worker database connection at the child branch.
+
+## Debugging
+
+Set `NEON_TEST_DEBUG=true` to write root/worker branch setup details to `storage/logs/neon-testing.log`.
+
+Set `NEON_TEST_DEBUG_DUMP=true` to stop immediately after a parallel worker applies its database config and print the resolved values. Sensitive values such as passwords, tokens, and secrets are masked in debug output.
