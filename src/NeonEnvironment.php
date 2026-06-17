@@ -32,6 +32,11 @@ final class NeonEnvironment
             return $value;
         }
 
+        return self::file($key);
+    }
+
+    public static function file(string $key): ?string
+    {
         $path = self::workingDirectory().'/.env';
         if (! is_file($path)) {
             return null;

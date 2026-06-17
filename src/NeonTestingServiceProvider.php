@@ -55,6 +55,10 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 'database.connections.pgsql.password' => config('database.connections.pgsql.password'),
             ]);
 
+            if (NeonDebug::dumpRequested()) {
+                NeonApi::deleteBranch($branch->id);
+            }
+
             NeonDebug::dumpAndExitIfRequested('worker-created-and-applied', [
                 'parallel_token' => $token,
                 'branch_id' => $branch->id,
@@ -84,10 +88,10 @@ final class NeonTestingServiceProvider extends ServiceProvider
         config([
             'database.default' => 'pgsql',
             'database.connections.pgsql.host' => $host,
-            'database.connections.pgsql.port' => NeonEnvironment::optional('DB_PORT') ?? '5432',
-            'database.connections.pgsql.database' => NeonEnvironment::optional('DB_DATABASE'),
-            'database.connections.pgsql.username' => NeonEnvironment::optional('DB_USERNAME'),
-            'database.connections.pgsql.password' => NeonEnvironment::optional('DB_PASSWORD'),
+            'database.connections.pgsql.port' => NeonEnvironment::file('DB_PORT') ?? NeonEnvironment::optional('DB_PORT') ?? '5432',
+            'database.connections.pgsql.database' => NeonEnvironment::file('DB_DATABASE') ?? NeonEnvironment::optional('DB_DATABASE'),
+            'database.connections.pgsql.username' => NeonEnvironment::file('DB_USERNAME') ?? NeonEnvironment::optional('DB_USERNAME'),
+            'database.connections.pgsql.password' => NeonEnvironment::file('DB_PASSWORD') ?? NeonEnvironment::optional('DB_PASSWORD'),
         ]);
 
         DB::purge('pgsql');

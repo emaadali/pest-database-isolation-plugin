@@ -39,7 +39,7 @@ final class NeonDebug
      */
     public static function dumpAndExitIfRequested(string $event, array $context = []): void
     {
-        if (! filter_var(NeonEnvironment::optional('NEON_TEST_DEBUG_DUMP') ?? false, FILTER_VALIDATE_BOOLEAN)) {
+        if (! self::dumpRequested()) {
             return;
         }
 
@@ -52,6 +52,11 @@ final class NeonDebug
         ];
 
         throw new RuntimeException("Neon test debug dump:\n".json_encode($payload, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+    }
+
+    public static function dumpRequested(): bool
+    {
+        return filter_var(NeonEnvironment::optional('NEON_TEST_DEBUG_DUMP') ?? false, FILTER_VALIDATE_BOOLEAN);
     }
 
     public static function enabled(): bool
