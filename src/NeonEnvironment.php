@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Emaadali\PestNeondbPlugin;
 
 use Illuminate\Support\Str;
+use PDO;
 use RuntimeException;
 
 final class NeonEnvironment
@@ -104,6 +105,16 @@ final class NeonEnvironment
     public static function databaseHost(NeonBranch $branch): string
     {
         return $branch->poolerHost ?? self::poolerHost(self::directHost($branch->host));
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    public static function databaseOptions(): array
+    {
+        return [
+            PDO::ATTR_EMULATE_PREPARES => true,
+        ];
     }
 
     public static function directHost(string $host): string

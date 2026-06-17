@@ -140,6 +140,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
             'database.connections.pgsql.username' => NeonEnvironment::file('DB_USERNAME') ?? NeonEnvironment::optional('DB_USERNAME'),
             'database.connections.pgsql.password' => NeonEnvironment::file('DB_PASSWORD') ?? NeonEnvironment::optional('DB_PASSWORD'),
             'database.connections.pgsql.sslmode' => 'require',
+            'database.connections.pgsql.options' => NeonEnvironment::databaseOptions(),
         ]);
 
         DB::purge('pgsql');

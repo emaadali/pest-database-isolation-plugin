@@ -88,6 +88,12 @@ it('uses the pooler host for worker database connections', function (): void {
         ->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
 });
 
+it('uses PgBouncer-compatible database connection options', function (): void {
+    expect(NeonEnvironment::databaseOptions())->toMatchArray([
+        PDO::ATTR_EMULATE_PREPARES => true,
+    ]);
+});
+
 it('detects parallel CLI requests from argv', function (): void {
     $originalArgv = $_SERVER['argv'] ?? null;
     $_SERVER['argv'] = ['vendor/bin/pest', '--parallel'];
