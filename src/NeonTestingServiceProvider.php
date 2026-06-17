@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Emaadali\PestNeondbPlugin;
 
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\ServiceProvider;
@@ -13,8 +12,6 @@ use Illuminate\Support\ServiceProvider;
 final class NeonTestingServiceProvider extends ServiceProvider
 {
     private static ?NeonBranch $workerBranch = null;
-
-    private static bool $workerBranchMigrated = false;
 
     public function boot(): void
     {
@@ -28,10 +25,8 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 : ($_SERVER['LARAVEL_PARALLEL_TESTING_'.strtoupper($option)] ?? false));
 
             if (! NeonEnvironment::runningInParallel() && NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST') !== null) {
-                $this->prepareDatabaseHosts(
-                    directHost: NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'),
-                    runtimeHost: NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_POOLER_HOST') ?? NeonEnvironment::required('DB_HOST'),
-                );
+                $this->applyDatabaseHost(NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_POOLER_HOST') ?? NeonEnvironment::required('DB_HOST'));
+                RefreshDatabaseState::$migrated = true;
             }
         }
 
@@ -77,27 +72,10 @@ final class NeonTestingServiceProvider extends ServiceProvider
         $workerBranch = self::$workerBranch;
 
         config(['services.neon.testing_worker_branch_id' => $workerBranch->id]);
-        $this->prepareDatabaseHosts(
-            directHost: NeonEnvironment::directHost($workerBranch->host),
-            runtimeHost: $workerBranch->poolerHost ?? $workerBranch->host,
-        );
+        $this->applyDatabaseHost($workerBranch->poolerHost ?? $workerBranch->host);
+        RefreshDatabaseState::$migrated = true;
 
         NeonEnvironment::applyDatabaseEnvironment($workerBranch);
-    }
-
-    private function prepareDatabaseHosts(string $directHost, string $runtimeHost): void
-    {
-        if (! self::$workerBranchMigrated) {
-            $this->applyDatabaseHost($directHost);
-
-            Artisan::call('migrate', ['--no-interaction' => true]);
-
-            self::$workerBranchMigrated = true;
-        }
-
-        $this->applyDatabaseHost($runtimeHost);
-
-        RefreshDatabaseState::$migrated = true;
     }
 
     private function applyDatabaseHost(string $host): void
