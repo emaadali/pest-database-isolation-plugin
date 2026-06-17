@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Emaadali\PestNeondbPlugin;
 
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Database\Events\MigrationsEnded;
 use Illuminate\Database\Events\MigrationsStarted;
 use Illuminate\Support\Facades\DB;
@@ -60,31 +62,61 @@ final class NeonTestingServiceProvider extends ServiceProvider
 
     private function registerMigrationHostSwap(): void
     {
-        Event::listen(MigrationsStarted::class, function (): void {
-            $host = config('database.connections.pgsql.host');
-
-            if (! is_string($host) || ! str_contains($host, '-pooler.')) {
+        Event::listen(CommandStarting::class, function (CommandStarting $event): void {
+            if (! str_starts_with($event->command, 'migrate')) {
                 return;
             }
 
-            self::$pooledMigrationHost = $host;
+            $this->switchPooledHostToDirect();
+        });
 
-            config(['database.connections.pgsql.host' => str_replace('-pooler.', '.', $host)]);
+        Event::listen(CommandFinished::class, function (CommandFinished $event): void {
+            if (! str_starts_with($event->command, 'migrate')) {
+                return;
+            }
 
-            DB::purge('pgsql');
+            $this->restorePooledHost();
+        });
+
+        Event::listen(MigrationsStarted::class, function (): void {
+            $this->switchPooledHostToDirect();
         });
 
         Event::listen(MigrationsEnded::class, function (): void {
-            if (self::$pooledMigrationHost === null) {
-                return;
-            }
-
-            config(['database.connections.pgsql.host' => self::$pooledMigrationHost]);
-
-            self::$pooledMigrationHost = null;
-
-            DB::purge('pgsql');
+            $this->restorePooledHost();
         });
+    }
+
+    private function switchPooledHostToDirect(): void
+    {
+        if (self::$pooledMigrationHost !== null) {
+            return;
+        }
+
+        $host = config('database.connections.pgsql.host');
+
+        if (! is_string($host) || ! str_contains($host, '-pooler.')) {
+            return;
+        }
+
+        self::$pooledMigrationHost = $host;
+
+        config(['database.connections.pgsql.host' => str_replace('-pooler.', '.', $host)]);
+
+        DB::purge('pgsql');
+    }
+
+    private function restorePooledHost(): void
+    {
+        if (self::$pooledMigrationHost === null) {
+            return;
+        }
+
+        config(['database.connections.pgsql.host' => self::$pooledMigrationHost]);
+
+        self::$pooledMigrationHost = null;
+
+        DB::purge('pgsql');
     }
 
     private function applyWorkerBranch(string $token): void
