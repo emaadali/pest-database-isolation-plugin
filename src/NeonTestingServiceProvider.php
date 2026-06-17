@@ -7,6 +7,7 @@ namespace Emaadali\PestNeondbPlugin;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 final class NeonTestingServiceProvider extends ServiceProvider
 {
@@ -14,6 +15,12 @@ final class NeonTestingServiceProvider extends ServiceProvider
     {
         if (! $this->app->runningInConsole()) {
             return;
+        }
+
+        if (NeonEnvironment::enabled()) {
+            ParallelTesting::resolveOptionsUsing(fn (string $option): mixed => $option === 'without_databases'
+                ? true
+                : ($_SERVER['LARAVEL_PARALLEL_TESTING_'.Str::upper($option)] ?? false));
         }
 
         ParallelTesting::setUpProcess(function (int $token): void {
@@ -39,14 +46,44 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 ttlSeconds: NeonEnvironment::integer('NEON_TEST_BRANCH_TTL_SECONDS', 21600),
             );
 
-            config(['services.neon.testing_worker_branch_id' => $branch->id]);
-            $this->applyDatabaseHost($branch->host);
+            NeonEnvironment::set("NEON_TEST_WORKER_BRANCH_ID_{$token}", $branch->id);
+            NeonEnvironment::set("NEON_TEST_WORKER_BRANCH_HOST_{$token}", $branch->host);
 
-            NeonDebug::log('worker-created-and-applied', [
+            NeonDebug::log('worker-created', [
                 'parallel_token' => $token,
                 'branch_id' => $branch->id,
                 'branch_name' => $branch->name,
                 'host' => $branch->host,
+            ]);
+
+            if (NeonDebug::dumpRequested()) {
+                NeonApi::deleteBranch($branch->id);
+            }
+
+            NeonDebug::dumpAndExitIfRequested('worker-created', [
+                'parallel_token' => $token,
+                'branch_id' => $branch->id,
+                'branch_name' => $branch->name,
+                'host' => $branch->host,
+            ]);
+        });
+
+        ParallelTesting::setUpTestCase(function (mixed $testCase, string $token): void {
+            if (! NeonEnvironment::enabled()) {
+                return;
+            }
+
+            $branchId = NeonEnvironment::required("NEON_TEST_WORKER_BRANCH_ID_{$token}");
+            $host = NeonEnvironment::required("NEON_TEST_WORKER_BRANCH_HOST_{$token}");
+
+            config(['services.neon.testing_worker_branch_id' => $branchId]);
+            $this->applyDatabaseHost($host);
+
+            NeonDebug::log('worker-applied-in-test-process', [
+                'parallel_token' => $token,
+                'branch_id' => $branchId,
+                'host' => $host,
+                'test_case' => is_object($testCase) ? $testCase::class : null,
                 'database.default' => config('database.default'),
                 'database.connections.pgsql.host' => config('database.connections.pgsql.host'),
                 'database.connections.pgsql.port' => config('database.connections.pgsql.port'),
@@ -55,15 +92,11 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 'database.connections.pgsql.password' => config('database.connections.pgsql.password'),
             ]);
 
-            if (NeonDebug::dumpRequested()) {
-                NeonApi::deleteBranch($branch->id);
-            }
-
-            NeonDebug::dumpAndExitIfRequested('worker-created-and-applied', [
+            NeonDebug::dumpAndExitIfRequested('worker-applied-in-test-process', [
                 'parallel_token' => $token,
-                'branch_id' => $branch->id,
-                'branch_name' => $branch->name,
-                'host' => $branch->host,
+                'branch_id' => $branchId,
+                'host' => $host,
+                'test_case' => is_object($testCase) ? $testCase::class : null,
                 'database.default' => config('database.default'),
                 'database.connections.pgsql.host' => config('database.connections.pgsql.host'),
                 'database.connections.pgsql.port' => config('database.connections.pgsql.port'),
