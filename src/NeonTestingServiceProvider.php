@@ -25,34 +25,48 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 : ($_SERVER['LARAVEL_PARALLEL_TESTING_'.strtoupper($option)] ?? false));
         }
 
-        ParallelTesting::setUpTestCase(function (mixed $testCase, string $token): void {
+        ParallelTesting::setUpTestCase(function (mixed $testCase, string|int $token): void {
             if (! NeonEnvironment::enabled()) {
                 return;
             }
 
-            if (! self::$workerBranch instanceof NeonBranch) {
-                self::$workerBranch = NeonApi::createBranch(
-                    parentBranchId: NeonEnvironment::required('NEON_TEST_PARENT_BRANCH_ID'),
-                    name: NeonEnvironment::branchName("test-worker-p{$token}"),
-                    ttlSeconds: NeonEnvironment::integer('NEON_TEST_BRANCH_TTL_SECONDS', 21600),
-                );
+            $this->applyWorkerBranch((string) $token);
+        });
 
-                register_shutdown_function(static function (): void {
-                    if (self::$workerBranch instanceof NeonBranch) {
-                        NeonApi::deleteBranch(self::$workerBranch->id);
-                    }
-                });
+        ParallelTesting::setUpTestDatabaseBeforeMigrating(function (string $database, string|int $token): void {
+            if (NeonEnvironment::enabled()) {
+                $this->applyWorkerBranch((string) $token);
             }
+        });
 
-            $branchId = self::$workerBranch->id;
-            $host = self::$workerBranch->host;
-
-            config(['services.neon.testing_worker_branch_id' => $branchId]);
-            $this->applyDatabaseHost($host);
-            RefreshDatabaseState::$migrated = true;
+        ParallelTesting::setUpTestDatabase(function (string $database, string|int $token): void {
+            if (NeonEnvironment::enabled()) {
+                $this->applyWorkerBranch((string) $token);
+            }
         });
 
         ParallelTesting::tearDownProcess(function (): void {});
+    }
+
+    private function applyWorkerBranch(string $token): void
+    {
+        if (! self::$workerBranch instanceof NeonBranch) {
+            self::$workerBranch = NeonApi::createBranch(
+                parentBranchId: NeonEnvironment::required('NEON_TEST_PARENT_BRANCH_ID'),
+                name: NeonEnvironment::branchName("test-worker-p{$token}"),
+                ttlSeconds: NeonEnvironment::integer('NEON_TEST_BRANCH_TTL_SECONDS', 21600),
+            );
+
+            register_shutdown_function(static function (): void {
+                if (self::$workerBranch instanceof NeonBranch) {
+                    NeonApi::deleteBranch(self::$workerBranch->id);
+                }
+            });
+        }
+
+        config(['services.neon.testing_worker_branch_id' => self::$workerBranch->id]);
+        $this->applyDatabaseHost(self::$workerBranch->host);
+        RefreshDatabaseState::$migrated = true;
     }
 
     private function applyDatabaseHost(string $host): void
