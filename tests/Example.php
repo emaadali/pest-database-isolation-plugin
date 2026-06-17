@@ -88,9 +88,9 @@ it('uses the pooler host for worker database connections', function (): void {
         ->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
 });
 
-it('uses PgBouncer-compatible database connection options', function (): void {
+it('uses PgBouncer-compatible database connection options without emulating bindings', function (): void {
     expect(NeonEnvironment::databaseOptions())->toMatchArray([
-        PDO::ATTR_EMULATE_PREPARES => true,
+        PDO::PGSQL_ATTR_DISABLE_PREPARES => true,
     ]);
 });
 

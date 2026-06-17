@@ -113,7 +113,7 @@ final class NeonEnvironment
     public static function databaseOptions(): array
     {
         return [
-            PDO::ATTR_EMULATE_PREPARES => true,
+            PDO::PGSQL_ATTR_DISABLE_PREPARES => true,
         ];
     }
 
