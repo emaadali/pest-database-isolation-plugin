@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace Emaadali\PestNeondbPlugin;
 
+use Illuminate\Database\Events\MigrationsEnded;
+use Illuminate\Database\Events\MigrationsStarted;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\ServiceProvider;
 
 final class NeonTestingServiceProvider extends ServiceProvider
 {
     private static ?NeonBranch $workerBranch = null;
+
+    private static ?string $pooledMigrationHost = null;
 
     public function boot(): void
     {
@@ -19,6 +24,8 @@ final class NeonTestingServiceProvider extends ServiceProvider
         }
 
         if (NeonEnvironment::enabled()) {
+            $this->registerMigrationHostSwap();
+
             ParallelTesting::resolveOptionsUsing(fn (string $option): mixed => $option === 'without_databases'
                 ? true
                 : ($_SERVER['LARAVEL_PARALLEL_TESTING_'.strtoupper($option)] ?? false));
@@ -49,6 +56,35 @@ final class NeonTestingServiceProvider extends ServiceProvider
         });
 
         ParallelTesting::tearDownProcess(function (): void {});
+    }
+
+    private function registerMigrationHostSwap(): void
+    {
+        Event::listen(MigrationsStarted::class, function (): void {
+            $host = config('database.connections.pgsql.host');
+
+            if (! is_string($host) || ! str_contains($host, '-pooler.')) {
+                return;
+            }
+
+            self::$pooledMigrationHost = $host;
+
+            config(['database.connections.pgsql.host' => str_replace('-pooler.', '.', $host)]);
+
+            DB::purge('pgsql');
+        });
+
+        Event::listen(MigrationsEnded::class, function (): void {
+            if (self::$pooledMigrationHost === null) {
+                return;
+            }
+
+            config(['database.connections.pgsql.host' => self::$pooledMigrationHost]);
+
+            self::$pooledMigrationHost = null;
+
+            DB::purge('pgsql');
+        });
     }
 
     private function applyWorkerBranch(string $token): void
