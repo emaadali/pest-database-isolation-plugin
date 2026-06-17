@@ -110,12 +110,18 @@ final class NeonTestingServiceProvider extends ServiceProvider
             ]);
         });
 
-        ParallelTesting::tearDownProcess(function (): void {
-            $workerBranchId = config('services.neon.testing_worker_branch_id');
+        ParallelTesting::tearDownProcess(function (int $token): void {
+            $workerBranchId = NeonEnvironment::optional("NEON_TEST_WORKER_BRANCH_ID_{$token}");
             if (is_string($workerBranchId) && $workerBranchId !== '') {
-                NeonDebug::log('worker-deleting', ['branch_id' => $workerBranchId]);
+                NeonDebug::log('worker-deleting', [
+                    'parallel_token' => $token,
+                    'branch_id' => $workerBranchId,
+                ]);
                 NeonApi::deleteBranch($workerBranchId);
-                NeonDebug::log('worker-delete-requested', ['branch_id' => $workerBranchId]);
+                NeonDebug::log('worker-delete-requested', [
+                    'parallel_token' => $token,
+                    'branch_id' => $workerBranchId,
+                ]);
             }
         });
     }
