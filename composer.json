@@ -1,5 +1,5 @@
 {
-    "name": "pestphp/pest-plugin-template",
+    "name": "emaadali/pest-neondb-plugin",
     "description": "My awesome plugin",
     "keywords": [
         "php",
