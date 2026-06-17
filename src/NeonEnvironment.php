@@ -84,7 +84,7 @@ final class NeonEnvironment
     public static function applyDatabaseEnvironment(NeonBranch $branch): void
     {
         self::set('DB_CONNECTION', 'pgsql');
-        self::set('DB_HOST', self::directHost($branch->host));
+        self::set('DB_HOST', $branch->poolerHost ?? $branch->host);
         self::set('DB_PORT', self::file('DB_PORT') ?? self::optional('DB_PORT') ?? '5432');
         self::set('DB_DATABASE', self::file('DB_DATABASE') ?? self::optional('DB_DATABASE') ?? '');
         self::set('DB_USERNAME', self::file('DB_USERNAME') ?? self::optional('DB_USERNAME') ?? '');

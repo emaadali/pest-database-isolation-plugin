@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Emaadali\PestNeondbPlugin;
 
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\ServiceProvider;
@@ -25,6 +26,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
 
             if (! NeonEnvironment::runningInParallel() && NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST') !== null) {
                 $this->applyDatabaseHost(NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'));
+                RefreshDatabaseState::$migrated = true;
             }
         }
 
@@ -70,7 +72,8 @@ final class NeonTestingServiceProvider extends ServiceProvider
         $workerBranch = self::$workerBranch;
 
         config(['services.neon.testing_worker_branch_id' => $workerBranch->id]);
-        $this->applyDatabaseHost($workerBranch->host);
+        $this->applyDatabaseHost($workerBranch->poolerHost ?? $workerBranch->host);
+        RefreshDatabaseState::$migrated = true;
 
         NeonEnvironment::applyDatabaseEnvironment($workerBranch);
     }
@@ -79,7 +82,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
     {
         config([
             'database.default' => 'pgsql',
-            'database.connections.pgsql.host' => NeonEnvironment::directHost($host),
+            'database.connections.pgsql.host' => $host,
             'database.connections.pgsql.port' => NeonEnvironment::file('DB_PORT') ?? NeonEnvironment::optional('DB_PORT') ?? '5432',
             'database.connections.pgsql.database' => NeonEnvironment::file('DB_DATABASE') ?? NeonEnvironment::optional('DB_DATABASE'),
             'database.connections.pgsql.username' => NeonEnvironment::file('DB_USERNAME') ?? NeonEnvironment::optional('DB_USERNAME'),
