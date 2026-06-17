@@ -128,6 +128,8 @@ final class NeonApi
      */
     private static function firstEndpointHost(array $endpoints): ?string
     {
+        $fallbackHost = null;
+
         foreach ($endpoints as $endpoint) {
             if (! is_array($endpoint)) {
                 continue;
@@ -135,10 +137,14 @@ final class NeonApi
 
             $host = $endpoint['host'] ?? null;
             if (is_string($host) && $host !== '') {
-                return $host;
+                if (str_contains($host, '-pooler.')) {
+                    return $host;
+                }
+
+                $fallbackHost ??= $host;
             }
         }
 
-        return null;
+        return $fallbackHost;
     }
 }
