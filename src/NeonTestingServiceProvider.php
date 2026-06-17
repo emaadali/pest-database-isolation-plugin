@@ -20,13 +20,25 @@ final class NeonTestingServiceProvider extends ServiceProvider
         }
 
         if (NeonEnvironment::enabled()) {
+            NeonTiming::log('provider.boot.enabled', [
+                'running_in_parallel' => NeonEnvironment::runningInParallel(),
+                'parallel_requested' => NeonEnvironment::commandRequestsParallel(),
+            ]);
+
             ParallelTesting::resolveOptionsUsing(fn (string $option): mixed => $option === 'without_databases'
                 ? true
                 : ($_SERVER['LARAVEL_PARALLEL_TESTING_'.strtoupper($option)] ?? false));
 
             if (! NeonEnvironment::runningInParallel() && NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST') !== null) {
+                $startedAt = hrtime(true);
+
                 $this->applyDatabaseHost(NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'));
                 RefreshDatabaseState::$migrated = true;
+
+                NeonTiming::log('provider.nonparallel-worker.applied', [
+                    'host' => NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'),
+                    'duration_ms' => $this->durationMs($startedAt),
+                ]);
             }
         }
 
@@ -55,6 +67,12 @@ final class NeonTestingServiceProvider extends ServiceProvider
 
     private function applyWorkerBranch(string $token): void
     {
+        $startedAt = hrtime(true);
+
+        NeonTiming::log('provider.worker.apply.start', [
+            'token' => $token,
+        ]);
+
         if (! self::$workerBranch instanceof NeonBranch) {
             self::$workerBranch = NeonApi::createBranch(
                 parentBranchId: NeonEnvironment::required('NEON_TEST_PARENT_BRANCH_ID'),
@@ -64,7 +82,14 @@ final class NeonTestingServiceProvider extends ServiceProvider
 
             register_shutdown_function(static function (): void {
                 if (self::$workerBranch instanceof NeonBranch) {
+                    $startedAt = hrtime(true);
+
                     NeonApi::deleteBranch(self::$workerBranch->id);
+
+                    NeonTiming::log('provider.worker.delete.shutdown.end', [
+                        'branch_id' => self::$workerBranch->id,
+                        'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 3),
+                    ]);
                 }
             });
         }
@@ -76,6 +101,14 @@ final class NeonTestingServiceProvider extends ServiceProvider
         RefreshDatabaseState::$migrated = true;
 
         NeonEnvironment::applyDatabaseEnvironment($workerBranch);
+
+        NeonTiming::log('provider.worker.apply.end', [
+            'token' => $token,
+            'branch_id' => $workerBranch->id,
+            'host' => $workerBranch->host,
+            'pooler_host' => $workerBranch->poolerHost,
+            'duration_ms' => $this->durationMs($startedAt),
+        ]);
     }
 
     private function applyDatabaseHost(string $host): void
@@ -91,5 +124,10 @@ final class NeonTestingServiceProvider extends ServiceProvider
         ]);
 
         DB::purge('pgsql');
+    }
+
+    private function durationMs(int $startedAt): float
+    {
+        return round((hrtime(true) - $startedAt) / 1_000_000, 3);
     }
 }
