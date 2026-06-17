@@ -38,7 +38,6 @@ final class NeonTestingRootBranch
         $branch = NeonApi::createBranch(
             parentBranchId: NeonEnvironment::required('NEON_PARENT_BRANCH_ID'),
             name: NeonEnvironment::branchName('test-root'),
-            schemaOnly: true,
         );
 
         NeonEnvironment::set('NEON_TEST_PARENT_BRANCH_ID', $branch->id);
