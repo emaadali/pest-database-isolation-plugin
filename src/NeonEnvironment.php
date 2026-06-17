@@ -107,6 +107,23 @@ final class NeonEnvironment
         return self::optional('LARAVEL_PARALLEL_TESTING') !== null;
     }
 
+    public static function commandRequestsParallel(): bool
+    {
+        $arguments = $_SERVER['argv'] ?? [];
+
+        if (! is_array($arguments)) {
+            return self::runningInParallel();
+        }
+
+        foreach ($arguments as $argument) {
+            if ($argument === '--parallel') {
+                return true;
+            }
+        }
+
+        return self::runningInParallel();
+    }
+
     private static function normalize(string $value): string
     {
         $value = mb_trim($value);

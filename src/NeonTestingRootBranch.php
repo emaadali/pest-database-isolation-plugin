@@ -22,31 +22,29 @@ final class NeonTestingRootBranch
             throw new RuntimeException('NEON_TEST_PARENT_BRANCH_ID was not initialized before the parallel test worker booted.');
         }
 
-        $branch = NeonApi::createBranch(
-            parentBranchId: NeonEnvironment::required('NEON_PARENT_BRANCH_ID'),
-            name: NeonEnvironment::branchName('test-root'),
-        );
-
-        NeonEnvironment::set('NEON_TEST_PARENT_BRANCH_ID', $branch->id);
-
-        $workerBranch = null;
-
-        if (! NeonEnvironment::runningInParallel()) {
+        if (! NeonEnvironment::commandRequestsParallel()) {
             $workerBranch = NeonApi::createBranch(
-                parentBranchId: $branch->id,
+                parentBranchId: NeonEnvironment::required('NEON_PARENT_BRANCH_ID'),
                 name: NeonEnvironment::branchName('test-worker'),
                 ttlSeconds: NeonEnvironment::integer('NEON_TEST_BRANCH_TTL_SECONDS', 21600),
             );
 
+            NeonEnvironment::set('NEON_TEST_PARENT_BRANCH_ID', NeonEnvironment::required('NEON_PARENT_BRANCH_ID'));
             NeonEnvironment::applyDatabaseEnvironment($workerBranch);
+
+            register_shutdown_function(static fn () => NeonApi::deleteBranch($workerBranch->id));
+
+            return;
         }
 
-        register_shutdown_function(static function () use ($branch, $workerBranch): void {
-            if ($workerBranch instanceof NeonBranch) {
-                NeonApi::deleteBranch($workerBranch->id);
-            }
+        $branch = NeonApi::createBranch(
+            parentBranchId: NeonEnvironment::required('NEON_PARENT_BRANCH_ID'),
+            name: NeonEnvironment::branchName('test-root'),
+            withEndpoint: false,
+        );
 
-            NeonApi::deleteBranch($branch->id);
-        });
+        NeonEnvironment::set('NEON_TEST_PARENT_BRANCH_ID', $branch->id);
+
+        register_shutdown_function(static fn () => NeonApi::deleteBranch($branch->id));
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use Emaadali\PestNeondbPlugin\NeonApi;
+use Emaadali\PestNeondbPlugin\NeonBranch;
 use Emaadali\PestNeondbPlugin\NeonEnvironment;
 
 it('normalizes quoted environment values from .env', function (): void {
@@ -62,4 +63,28 @@ it('falls back to the first endpoint host when no pooler host is returned', func
 it('converts pooled endpoint hosts to direct hosts for test database connections', function (): void {
     expect(NeonEnvironment::directHost('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech'))
         ->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
+});
+
+it('detects parallel CLI requests from argv', function (): void {
+    $originalArgv = $_SERVER['argv'] ?? null;
+    $_SERVER['argv'] = ['vendor/bin/pest', '--parallel'];
+
+    expect(NeonEnvironment::commandRequestsParallel())->toBeTrue();
+
+    if ($originalArgv === null) {
+        unset($_SERVER['argv']);
+    } else {
+        $_SERVER['argv'] = $originalArgv;
+    }
+});
+
+it('can represent a branch created without an endpoint', function (): void {
+    $branch = new NeonBranch(
+        id: 'br-root',
+        name: 'root',
+        host: '',
+    );
+
+    expect($branch->host)->toBe('')
+        ->and($branch->poolerHost)->toBeNull();
 });

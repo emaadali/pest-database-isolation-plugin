@@ -8,7 +8,7 @@ use RuntimeException;
 
 final class NeonApi
 {
-    public static function createBranch(string $parentBranchId, string $name, bool $schemaOnly = false, ?int $ttlSeconds = null): NeonBranch
+    public static function createBranch(string $parentBranchId, string $name, bool $schemaOnly = false, ?int $ttlSeconds = null, bool $withEndpoint = true): NeonBranch
     {
         $branch = [
             'parent_id' => $parentBranchId,
@@ -23,29 +23,34 @@ final class NeonApi
             $branch['expires_at'] = gmdate('Y-m-d\TH:i:s\Z', time() + $ttlSeconds);
         }
 
-        $response = self::request('POST', '/branches', [
+        $payload = [
             'branch' => $branch,
-            'endpoints' => [
+        ];
+
+        if ($withEndpoint) {
+            $payload['endpoints'] = [
                 ['type' => 'read_write'],
-            ],
-        ], "creating Neon branch {$name}");
+            ];
+        }
+
+        $response = self::request('POST', '/branches', $payload, "creating Neon branch {$name}");
 
         $createdBranch = $response['branch'] ?? null;
-        $endpoints = $response['endpoints'] ?? null;
+        $endpoints = $response['endpoints'] ?? [];
 
         if (! is_array($createdBranch) || ! is_array($endpoints)) {
-            throw new RuntimeException('Neon create branch response is missing branch or endpoint data.');
+            throw new RuntimeException('Neon create branch response is missing branch data.');
         }
 
         $id = $createdBranch['id'] ?? null;
         $branchName = $createdBranch['name'] ?? null;
         [$host, $poolerHost] = self::endpointHosts($endpoints);
 
-        if (! is_string($id) || $id === '' || ! is_string($branchName) || $branchName === '' || $host === null) {
+        if (! is_string($id) || $id === '' || ! is_string($branchName) || $branchName === '' || ($withEndpoint && $host === null)) {
             throw new RuntimeException('Neon create branch response is missing required branch or endpoint fields.');
         }
 
-        return new NeonBranch($id, $branchName, $host, $poolerHost);
+        return new NeonBranch($id, $branchName, $host ?? '', $poolerHost);
     }
 
     public static function deleteBranch(string $branchId): void
