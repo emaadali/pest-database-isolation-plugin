@@ -25,7 +25,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 : ($_SERVER['LARAVEL_PARALLEL_TESTING_'.strtoupper($option)] ?? false));
 
             if (! NeonEnvironment::runningInParallel() && NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST') !== null) {
-                $this->applyDatabaseHost(NeonEnvironment::required('NEON_TEST_WORKER_BRANCH_HOST'));
+                $this->applyDatabaseHost(NeonEnvironment::required('DB_HOST'));
                 RefreshDatabaseState::$migrated = true;
             }
         }
