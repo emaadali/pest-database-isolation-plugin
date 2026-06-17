@@ -47,7 +47,7 @@ it('keeps direct and pooled endpoint hosts separately', function (): void {
     ]);
 });
 
-it('falls back to the first endpoint host when no pooler host is returned', function (): void {
+it('synthesizes a pooler host when no pooler host is returned', function (): void {
     $method = new ReflectionMethod(NeonApi::class, 'endpointHosts');
     $method->setAccessible(true);
 
@@ -56,13 +56,18 @@ it('falls back to the first endpoint host when no pooler host is returned', func
         ['host' => 'ep-other-field-atfmtke7.c-9.us-east-1.aws.neon.tech'],
     ]))->toBe([
         'ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech',
-        null,
+        'ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech',
     ]);
 });
 
 it('converts pooled endpoint hosts to direct hosts for test database connections', function (): void {
     expect(NeonEnvironment::directHost('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech'))
         ->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
+});
+
+it('converts direct endpoint hosts to pooler hosts', function (): void {
+    expect(NeonEnvironment::poolerHost('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech'))
+        ->toBe('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech');
 });
 
 it('detects parallel CLI requests from argv', function (): void {

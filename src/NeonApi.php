@@ -188,7 +188,10 @@ final class NeonApi
             }
         }
 
-        return [$directHost ?? ($poolerHost !== null ? NeonEnvironment::directHost($poolerHost) : null), $poolerHost];
+        $directHost ??= $poolerHost !== null ? NeonEnvironment::directHost($poolerHost) : null;
+        $poolerHost ??= $directHost !== null ? NeonEnvironment::poolerHost($directHost) : null;
+
+        return [$directHost, $poolerHost];
     }
 
     private static function durationMs(int $startedAt): float

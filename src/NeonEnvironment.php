@@ -102,6 +102,23 @@ final class NeonEnvironment
         return str_replace('-pooler.', '.', $host);
     }
 
+    public static function poolerHost(string $host): string
+    {
+        if (str_contains($host, '-pooler.')) {
+            return $host;
+        }
+
+        $parts = explode('.', $host);
+
+        if ($parts[0] === '') {
+            return $host;
+        }
+
+        $parts[0] .= '-pooler';
+
+        return implode('.', $parts);
+    }
+
     public static function runningInParallel(): bool
     {
         return self::optional('LARAVEL_PARALLEL_TESTING') !== null;
