@@ -29,6 +29,24 @@ final class NeonTestingRootBranch
 
         NeonEnvironment::set('NEON_TEST_PARENT_BRANCH_ID', $branch->id);
 
-        register_shutdown_function(static fn () => NeonApi::deleteBranch($branch->id));
+        $workerBranch = null;
+
+        if (! NeonEnvironment::runningInParallel()) {
+            $workerBranch = NeonApi::createBranch(
+                parentBranchId: $branch->id,
+                name: NeonEnvironment::branchName('test-worker'),
+                ttlSeconds: NeonEnvironment::integer('NEON_TEST_BRANCH_TTL_SECONDS', 21600),
+            );
+
+            NeonEnvironment::applyDatabaseEnvironment($workerBranch);
+        }
+
+        register_shutdown_function(static function () use ($branch, $workerBranch): void {
+            if ($workerBranch instanceof NeonBranch) {
+                NeonApi::deleteBranch($workerBranch->id);
+            }
+
+            NeonApi::deleteBranch($branch->id);
+        });
     }
 }
