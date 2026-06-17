@@ -47,7 +47,20 @@ final class NeonTestingServiceProvider extends ServiceProvider
                 return;
             }
 
+            $startedAt = hrtime(true);
+
+            NeonTiming::log('provider.setUpTestCase.start', [
+                'token' => $token,
+                'test_case' => is_object($testCase) ? $testCase::class : null,
+            ]);
+
             $this->applyWorkerBranch((string) $token);
+
+            NeonTiming::log('provider.setUpTestCase.end', [
+                'token' => $token,
+                'test_case' => is_object($testCase) ? $testCase::class : null,
+                'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 3),
+            ]);
         });
 
         ParallelTesting::setUpTestDatabaseBeforeMigrating(function (string $database, string|int $token): void {
