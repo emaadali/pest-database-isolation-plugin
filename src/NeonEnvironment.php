@@ -84,13 +84,18 @@ final class NeonEnvironment
     public static function applyDatabaseEnvironment(NeonBranch $branch): void
     {
         self::set('DB_CONNECTION', 'pgsql');
-        self::set('DB_HOST', $branch->host);
+        self::set('DB_HOST', self::directHost($branch->host));
         self::set('DB_PORT', self::file('DB_PORT') ?? self::optional('DB_PORT') ?? '5432');
         self::set('DB_DATABASE', self::file('DB_DATABASE') ?? self::optional('DB_DATABASE') ?? '');
         self::set('DB_USERNAME', self::file('DB_USERNAME') ?? self::optional('DB_USERNAME') ?? '');
         self::set('DB_PASSWORD', self::file('DB_PASSWORD') ?? self::optional('DB_PASSWORD') ?? '');
         self::set('NEON_TEST_WORKER_BRANCH_ID', $branch->id);
-        self::set('NEON_TEST_WORKER_BRANCH_HOST', $branch->host);
+        self::set('NEON_TEST_WORKER_BRANCH_HOST', self::directHost($branch->host));
+    }
+
+    public static function directHost(string $host): string
+    {
+        return str_replace('-pooler.', '.', $host);
     }
 
     public static function runningInParallel(): bool

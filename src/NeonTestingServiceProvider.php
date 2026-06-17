@@ -143,7 +143,7 @@ final class NeonTestingServiceProvider extends ServiceProvider
     {
         config([
             'database.default' => 'pgsql',
-            'database.connections.pgsql.host' => $host,
+            'database.connections.pgsql.host' => NeonEnvironment::directHost($host),
             'database.connections.pgsql.port' => NeonEnvironment::file('DB_PORT') ?? NeonEnvironment::optional('DB_PORT') ?? '5432',
             'database.connections.pgsql.database' => NeonEnvironment::file('DB_DATABASE') ?? NeonEnvironment::optional('DB_DATABASE'),
             'database.connections.pgsql.username' => NeonEnvironment::file('DB_USERNAME') ?? NeonEnvironment::optional('DB_USERNAME'),
