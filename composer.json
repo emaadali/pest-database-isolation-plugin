@@ -1,6 +1,6 @@
 {
     "name": "emaadali/pest-neondb-plugin",
-    "description": "My awesome plugin",
+    "description": "Pest plugin for isolating Laravel parallel tests with Neon database branches.",
     "keywords": [
         "php",
         "framework",
@@ -12,19 +12,23 @@
     ],
     "license": "MIT",
     "require": {
+        "illuminate/database": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "illuminate/testing": "^11.0|^12.0|^13.0",
         "php": "^8.3",
         "pestphp/pest": "^4.4.3",
         "pestphp/pest-plugin": "^4.0.0"
     },
     "autoload": {
         "psr-4": {
-            "Pest\\PluginName\\": "src/"
+            "Emaadali\\PestNeondbPlugin\\": "src/"
         },
         "files": [
             "src/Autoload.php"
         ]
     },
     "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
         "pestphp/pest-dev-tools": "^4.1.0"
     },
     "minimum-stability": "dev",
@@ -49,5 +53,12 @@
             "@test:types",
             "@test:unit"
         ]
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Emaadali\\PestNeondbPlugin\\NeonTestingServiceProvider"
+            ]
+        }
     }
 }

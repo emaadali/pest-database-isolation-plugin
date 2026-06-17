@@ -1,14 +1,31 @@
-This repository contains the Pest Plugin Template.
+# Pest NeonDB Plugin
 
-> If you want to start testing your application with Pest, visit the main **[Pest Repository](https://github.com/pestphp/pest)**.
+Laravel-focused Pest plugin for isolating parallel test workers with Neon database branches.
 
-- Explore our docs at **[pestphp.com »](https://pestphp.com)**
-- Follow the creator Nuno Maduro:
-    - YouTube: **[youtube.com/@nunomaduro](https://www.youtube.com/@nunomaduro)** — Videos every weekday
-    - Twitch: **[twitch.tv/enunomaduro](https://www.twitch.tv/enunomaduro)** — Streams (almost) every weekday
-    - Twitter / X: **[x.com/enunomaduro](https://x.com/enunomaduro)**
-    - LinkedIn: **[linkedin.com/in/nunomaduro](https://www.linkedin.com/in/nunomaduro)**
-    - Instagram: **[instagram.com/enunomaduro](https://www.instagram.com/enunomaduro)**
-    - Tiktok: **[tiktok.com/@enunomaduro](https://www.tiktok.com/@enunomaduro)**
+## Installation
 
-Pest is an open-sourced software licensed under the **[MIT license](https://opensource.org/licenses/MIT)**.
+```bash
+composer require --dev emaadali/pest-neondb-plugin
+```
+
+## Usage
+
+In `tests/Pest.php`:
+
+```php
+use function Emaadali\PestNeondbPlugin\usesNeonTestingRootBranch;
+
+usesNeonTestingRootBranch();
+```
+
+Configure your test environment:
+
+```env
+NEON_TEST_BRANCHES=true
+NEON_API_KEY=...
+NEON_PROJECT_ID=...
+NEON_PARENT_BRANCH_ID=...
+NEON_TEST_BRANCH_TTL_SECONDS=21600
+```
+
+The root schema-only test branch is created once per Pest run and deleted when the parent test process exits. Laravel parallel workers automatically create expiring child branches from that root branch and point the worker database connection at the child branch.
