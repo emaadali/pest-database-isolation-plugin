@@ -91,6 +91,10 @@ final class NeonEnvironment
         self::set('DB_PASSWORD', self::file('DB_PASSWORD') ?? self::optional('DB_PASSWORD') ?? '');
         self::set('NEON_TEST_WORKER_BRANCH_ID', $branch->id);
         self::set('NEON_TEST_WORKER_BRANCH_HOST', self::directHost($branch->host));
+
+        if ($branch->poolerHost !== null) {
+            self::set('NEON_TEST_WORKER_BRANCH_POOLER_HOST', $branch->poolerHost);
+        }
     }
 
     public static function directHost(string $host): string

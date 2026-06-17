@@ -10,5 +10,6 @@ final readonly class NeonBranch
         public string $id,
         public string $name,
         public string $host,
+        public ?string $poolerHost = null,
     ) {}
 }

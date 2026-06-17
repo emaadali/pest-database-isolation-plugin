@@ -39,13 +39,13 @@ final class NeonApi
 
         $id = $createdBranch['id'] ?? null;
         $branchName = $createdBranch['name'] ?? null;
-        $host = self::firstEndpointHost($endpoints);
+        [$host, $poolerHost] = self::endpointHosts($endpoints);
 
         if (! is_string($id) || $id === '' || ! is_string($branchName) || $branchName === '' || $host === null) {
             throw new RuntimeException('Neon create branch response is missing required branch or endpoint fields.');
         }
 
-        return new NeonBranch($id, $branchName, $host);
+        return new NeonBranch($id, $branchName, $host, $poolerHost);
     }
 
     public static function deleteBranch(string $branchId): void
@@ -126,9 +126,14 @@ final class NeonApi
     /**
      * @param  array<mixed, mixed>  $endpoints
      */
-    private static function firstEndpointHost(array $endpoints): ?string
+    /**
+     * @param  array<mixed, mixed>  $endpoints
+     * @return array{0: ?string, 1: ?string}
+     */
+    private static function endpointHosts(array $endpoints): array
     {
-        $fallbackHost = null;
+        $directHost = null;
+        $poolerHost = null;
 
         foreach ($endpoints as $endpoint) {
             if (! is_array($endpoint)) {
@@ -138,13 +143,15 @@ final class NeonApi
             $host = $endpoint['host'] ?? null;
             if (is_string($host) && $host !== '') {
                 if (str_contains($host, '-pooler.')) {
-                    return $host;
+                    $poolerHost ??= $host;
+
+                    continue;
                 }
 
-                $fallbackHost ??= $host;
+                $directHost ??= $host;
             }
         }
 
-        return $fallbackHost;
+        return [$directHost ?? ($poolerHost !== null ? NeonEnvironment::directHost($poolerHost) : null), $poolerHost];
     }
 }

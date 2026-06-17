@@ -33,24 +33,30 @@ it('builds branch names from the configured application name', function (): void
     rmdir($directory);
 });
 
-it('prefers pooled endpoint hosts when selecting a branch endpoint', function (): void {
-    $method = new ReflectionMethod(NeonApi::class, 'firstEndpointHost');
+it('keeps direct and pooled endpoint hosts separately', function (): void {
+    $method = new ReflectionMethod(NeonApi::class, 'endpointHosts');
     $method->setAccessible(true);
 
     expect($method->invoke(null, [
         ['host' => 'ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech'],
         ['host' => 'ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech'],
-    ]))->toBe('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech');
+    ]))->toBe([
+        'ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech',
+        'ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech',
+    ]);
 });
 
 it('falls back to the first endpoint host when no pooler host is returned', function (): void {
-    $method = new ReflectionMethod(NeonApi::class, 'firstEndpointHost');
+    $method = new ReflectionMethod(NeonApi::class, 'endpointHosts');
     $method->setAccessible(true);
 
     expect($method->invoke(null, [
         ['host' => 'ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech'],
         ['host' => 'ep-other-field-atfmtke7.c-9.us-east-1.aws.neon.tech'],
-    ]))->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
+    ]))->toBe([
+        'ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech',
+        null,
+    ]);
 });
 
 it('converts pooled endpoint hosts to direct hosts for test database connections', function (): void {

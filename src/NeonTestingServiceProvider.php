@@ -4,20 +4,13 @@ declare(strict_types=1);
 
 namespace Emaadali\PestNeondbPlugin;
 
-use Illuminate\Console\Events\CommandFinished;
-use Illuminate\Console\Events\CommandStarting;
-use Illuminate\Database\Events\MigrationsEnded;
-use Illuminate\Database\Events\MigrationsStarted;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\ServiceProvider;
 
 final class NeonTestingServiceProvider extends ServiceProvider
 {
     private static ?NeonBranch $workerBranch = null;
-
-    private static ?string $pooledMigrationHost = null;
 
     public function boot(): void
     {
@@ -26,8 +19,6 @@ final class NeonTestingServiceProvider extends ServiceProvider
         }
 
         if (NeonEnvironment::enabled()) {
-            $this->registerMigrationHostSwap();
-
             ParallelTesting::resolveOptionsUsing(fn (string $option): mixed => $option === 'without_databases'
                 ? true
                 : ($_SERVER['LARAVEL_PARALLEL_TESTING_'.strtoupper($option)] ?? false));
@@ -60,65 +51,6 @@ final class NeonTestingServiceProvider extends ServiceProvider
         ParallelTesting::tearDownProcess(function (): void {});
     }
 
-    private function registerMigrationHostSwap(): void
-    {
-        Event::listen(CommandStarting::class, function (CommandStarting $event): void {
-            if (! str_starts_with($event->command, 'migrate')) {
-                return;
-            }
-
-            $this->switchPooledHostToDirect();
-        });
-
-        Event::listen(CommandFinished::class, function (CommandFinished $event): void {
-            if (! str_starts_with($event->command, 'migrate')) {
-                return;
-            }
-
-            $this->restorePooledHost();
-        });
-
-        Event::listen(MigrationsStarted::class, function (): void {
-            $this->switchPooledHostToDirect();
-        });
-
-        Event::listen(MigrationsEnded::class, function (): void {
-            $this->restorePooledHost();
-        });
-    }
-
-    private function switchPooledHostToDirect(): void
-    {
-        if (self::$pooledMigrationHost !== null) {
-            return;
-        }
-
-        $host = config('database.connections.pgsql.host');
-
-        if (! is_string($host) || ! str_contains($host, '-pooler.')) {
-            return;
-        }
-
-        self::$pooledMigrationHost = $host;
-
-        config(['database.connections.pgsql.host' => str_replace('-pooler.', '.', $host)]);
-
-        DB::purge('pgsql');
-    }
-
-    private function restorePooledHost(): void
-    {
-        if (self::$pooledMigrationHost === null) {
-            return;
-        }
-
-        config(['database.connections.pgsql.host' => self::$pooledMigrationHost]);
-
-        self::$pooledMigrationHost = null;
-
-        DB::purge('pgsql');
-    }
-
     private function applyWorkerBranch(string $token): void
     {
         if (! self::$workerBranch instanceof NeonBranch) {
@@ -135,8 +67,12 @@ final class NeonTestingServiceProvider extends ServiceProvider
             });
         }
 
-        config(['services.neon.testing_worker_branch_id' => self::$workerBranch->id]);
-        $this->applyDatabaseHost(self::$workerBranch->host);
+        $workerBranch = self::$workerBranch;
+
+        config(['services.neon.testing_worker_branch_id' => $workerBranch->id]);
+        $this->applyDatabaseHost($workerBranch->host);
+
+        NeonEnvironment::applyDatabaseEnvironment($workerBranch);
     }
 
     private function applyDatabaseHost(string $host): void
