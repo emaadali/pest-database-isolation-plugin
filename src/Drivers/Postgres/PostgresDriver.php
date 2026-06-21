@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Emaadali\PestDatabaseIsolation\Drivers\Postgres;
 
 use Emaadali\PestDatabaseIsolation\Drivers\TestingDatabaseDriver;
+use Emaadali\PestDatabaseIsolation\Support\Cleanup;
 use Emaadali\PestDatabaseIsolation\Support\Environment;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
@@ -83,7 +84,7 @@ final class PostgresDriver implements TestingDatabaseDriver
         $this->dropDatabase($pdo, $database);
         $pdo->exec('CREATE DATABASE '.$this->quoteIdentifier($database));
 
-        register_shutdown_function(function () use ($database): void {
+        Cleanup::register(function () use ($database): void {
             $this->dropDatabase($this->adminConnection($this->connectionSettings()), $database);
         });
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Emaadali\PestDatabaseIsolation\Drivers\Neon;
 
 use Emaadali\PestDatabaseIsolation\Drivers\TestingDatabaseDriver;
+use Emaadali\PestDatabaseIsolation\Support\Cleanup;
 use Emaadali\PestDatabaseIsolation\Support\Environment;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,7 @@ final class NeonDriver implements TestingDatabaseDriver
             Environment::set('NEON_TEST_PARENT_BRANCH_ID', Environment::required('NEON_PARENT_BRANCH_ID'));
             NeonSettings::applyDatabaseEnvironment($workerBranch);
 
-            register_shutdown_function(static fn () => NeonApi::deleteBranch($workerBranch->id));
+            Cleanup::register(static fn () => NeonApi::deleteBranch($workerBranch->id));
 
             return;
         }
@@ -54,7 +55,7 @@ final class NeonDriver implements TestingDatabaseDriver
 
         Environment::set('NEON_TEST_PARENT_BRANCH_ID', $branch->id);
 
-        register_shutdown_function(static fn () => NeonApi::deleteBranch($branch->id));
+        Cleanup::register(static fn () => NeonApi::deleteBranch($branch->id));
     }
 
     public function hasWorkerEnvironment(): bool
@@ -106,7 +107,7 @@ final class NeonDriver implements TestingDatabaseDriver
             ttlSeconds: Environment::integer('NEON_TEST_BRANCH_TTL_SECONDS', 21600),
         );
 
-        register_shutdown_function(static fn () => NeonApi::deleteBranch($branch->id));
+        Cleanup::register(static fn () => NeonApi::deleteBranch($branch->id));
 
         return $branch;
     }
