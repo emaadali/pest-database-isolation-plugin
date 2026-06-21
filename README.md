@@ -64,11 +64,7 @@ Laravel's `RefreshDatabase` trait then runs `migrate:fresh` against that worker 
 
 Because this driver creates and drops databases, it only operates on a local Postgres host (`localhost`, `127.0.0.1`, `::1`, or a Unix socket). Pointing it at a remote host throws an exception.
 
-### Admin database
-
-PostgreSQL will not let you run `CREATE DATABASE` or `DROP DATABASE` while you are connected to the database you are creating or dropping. You have to issue those statements from a *different*, already-existing database. Every PostgreSQL server ships with a maintenance database named `postgres` for exactly this purpose, so the plugin connects there to create and drop each worker database. (MySQL has no equivalent restriction, which is why you have not run into this before.)
-
-If your server has no `postgres` database, point the plugin at another existing one:
+The plugin connects to the `postgres` maintenance database to create and drop worker databases. Set `PEST_TEST_PGSQL_ADMIN_DATABASE` to use a different one:
 
 ```env
 PEST_TEST_PGSQL_ADMIN_DATABASE=template1
