@@ -1,0 +1,108 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Create an isolated local PostgreSQL database for the current git worktree and
+ * point this worktree's `.env` at it.
+ *
+ * Intended to run during worktree setup, after `composer install` and before
+ * `php artisan migrate`. The database is created empty; migrate it afterwards.
+ *
+ * Connection details (host, port, username, password, base database name) are
+ * read from the worktree's `.env`. The worktree database is named
+ * `<base>_wt_<worktree>` and recreated fresh on each run.
+ */
+
+$envPath = getcwd().'/.env';
+
+if (! is_file($envPath)) {
+    fwrite(STDERR, "[setup-worktree-database] No .env found at {$envPath}.".PHP_EOL);
+    exit(1);
+}
+
+$readEnv = static function (string $key, ?string $default = null) use ($envPath): ?string {
+    foreach (file($envPath, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
+        if (! str_starts_with($line, $key.'=')) {
+            continue;
+        }
+
+        $value = trim(substr($line, strlen($key) + 1));
+
+        if (strlen($value) >= 2
+            && (($value[0] === '"' && $value[-1] === '"') || ($value[0] === "'" && $value[-1] === "'"))) {
+            $value = substr($value, 1, -1);
+        }
+
+        return $value;
+    }
+
+    return $default;
+};
+
+$writeEnv = static function (string $key, string $value) use ($envPath): void {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES) ?: [];
+    $updated = false;
+
+    foreach ($lines as $index => $line) {
+        if (str_starts_with($line, $key.'=')) {
+            $lines[$index] = $key.'='.$value;
+            $updated = true;
+            break;
+        }
+    }
+
+    if (! $updated) {
+        $lines[] = $key.'='.$value;
+    }
+
+    file_put_contents($envPath, implode(PHP_EOL, $lines).PHP_EOL);
+};
+
+$sanitize = static function (string $value): string {
+    $value = strtolower((string) preg_replace('/[^a-zA-Z0-9_]+/', '_', $value));
+    $value = trim($value, '_');
+
+    return $value !== '' ? $value : 'app';
+};
+
+$host = $readEnv('DB_HOST', '127.0.0.1') ?? '127.0.0.1';
+$port = $readEnv('DB_PORT', '5432') ?? '5432';
+$username = $readEnv('DB_USERNAME', '') ?? '';
+$password = $readEnv('DB_PASSWORD');
+$base = $readEnv('DB_DATABASE', 'app') ?? 'app';
+
+if (! in_array($host, ['localhost', '127.0.0.1', '::1'], true) && ! str_starts_with($host, '/')) {
+    fwrite(STDERR, "[setup-worktree-database] Refusing to create/drop databases on non-local host [{$host}].".PHP_EOL);
+    exit(1);
+}
+
+$worktree = getenv('CURSOR_WORKTREE_NAME');
+if (! is_string($worktree) || $worktree === '') {
+    $worktree = basename(getcwd());
+}
+
+$suffix = '_wt_'.$sanitize($worktree);
+$database = substr($sanitize($base), 0, max(1, 63 - strlen($suffix))).$suffix;
+
+try {
+    $pdo = new PDO(
+        "pgsql:host={$host};port={$port};dbname=postgres",
+        $username !== '' ? $username : null,
+        ($password === null || $password === '') ? null : $password,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
+    );
+
+    $quoted = '"'.str_replace('"', '""', $database).'"';
+    $pdo->exec('DROP DATABASE IF EXISTS '.$quoted.' WITH (FORCE)');
+    $pdo->exec('CREATE DATABASE '.$quoted);
+} catch (Throwable $exception) {
+    fwrite(STDERR, '[setup-worktree-database] Failed: '.$exception->getMessage().PHP_EOL);
+    exit(1);
+}
+
+$writeEnv('DB_CONNECTION', 'pgsql');
+$writeEnv('DB_DATABASE', $database);
+
+fwrite(STDOUT, "[setup-worktree-database] Worktree database ready: {$database}".PHP_EOL);

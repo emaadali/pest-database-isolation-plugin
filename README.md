@@ -61,3 +61,18 @@ The plugin connects to the `postgres` maintenance database to create and drop wo
 ```env
 PEST_TEST_PGSQL_ADMIN_DATABASE=template1
 ```
+
+## Worktree databases
+
+The package ships a `vendor/bin/setup-worktree-database` binary for giving each git worktree its own isolated local Postgres database. It reads the connection details from the worktree's `.env`, creates a database named `<base>_wt_<worktree>` (worktree name from `CURSOR_WORKTREE_NAME`, falling back to the directory name), and rewrites `.env` to point at it.
+
+Call it from your worktree setup, after `composer install` and before migrating:
+
+```bash
+cp "$ROOT_WORKTREE_PATH/.env" .env
+composer install
+vendor/bin/setup-worktree-database
+php artisan migrate
+```
+
+The database is created empty (migrate it yourself), recreated fresh on each run, and—like the `pgsql` test driver—only operates on a local Postgres host.
