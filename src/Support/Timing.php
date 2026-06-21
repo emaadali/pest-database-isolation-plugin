@@ -2,16 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Emaadali\PestNeondbPlugin;
+namespace Emaadali\PestDatabaseIsolation\Support;
 
-final class NeonTiming
+use Emaadali\PestDatabaseIsolation\Drivers\DriverManager;
+
+final class Timing
 {
     /**
      * @param  array<string, mixed>  $context
      */
     public static function log(string $event, array $context = []): void
     {
-        if (! NeonEnvironment::enabled()) {
+        if (! DriverManager::enabled()) {
             return;
         }
 
@@ -19,7 +21,7 @@ final class NeonTiming
             'time' => gmdate(DATE_ATOM),
             'event' => $event,
             'pid' => getmypid(),
-            'test_token' => NeonEnvironment::optional('TEST_TOKEN'),
+            'test_token' => Environment::optional('TEST_TOKEN'),
             'context' => $context,
         ];
 
@@ -34,16 +36,18 @@ final class NeonTiming
 
     public static function path(): string
     {
-        $configuredPath = NeonEnvironment::optional('NEON_TEST_TIMING_LOG');
+        $configuredPath = Environment::optional('PEST_TEST_TIMING_LOG')
+            ?? Environment::optional('NEON_TEST_TIMING_LOG');
+
         if ($configuredPath !== null) {
             return $configuredPath;
         }
 
-        $storageLogs = getcwd().'/storage/logs';
+        $storageLogs = Environment::workingDirectory().'/storage/logs';
         if (is_dir($storageLogs)) {
-            return "{$storageLogs}/neon-testing-timing.log";
+            return "{$storageLogs}/pest-testing-timing.log";
         }
 
-        return getcwd().'/.neon-testing-timing.log';
+        return Environment::workingDirectory().'/.pest-testing-timing.log';
     }
 }

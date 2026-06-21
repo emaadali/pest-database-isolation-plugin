@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Emaadali\PestNeondbPlugin;
+namespace Emaadali\PestDatabaseIsolation\Drivers\Neon;
 
+use Emaadali\PestDatabaseIsolation\Support\Environment;
+use Emaadali\PestDatabaseIsolation\Support\Timing;
 use RuntimeException;
 
 final class NeonApi
@@ -12,7 +14,7 @@ final class NeonApi
     {
         $startedAt = hrtime(true);
 
-        NeonTiming::log('neon.branch.create.start', [
+        Timing::log('neon.branch.create.start', [
             'parent_branch_id' => $parentBranchId,
             'branch_name' => $name,
             'schema_only' => $schemaOnly,
@@ -62,7 +64,7 @@ final class NeonApi
 
         $branch = new NeonBranch($id, $branchName, $host ?? '', $poolerHost);
 
-        NeonTiming::log('neon.branch.create.end', [
+        Timing::log('neon.branch.create.end', [
             'branch_id' => $branch->id,
             'branch_name' => $branch->name,
             'host' => $branch->host,
@@ -77,13 +79,13 @@ final class NeonApi
     {
         $startedAt = hrtime(true);
 
-        NeonTiming::log('neon.branch.delete.start', [
+        Timing::log('neon.branch.delete.start', [
             'branch_id' => $branchId,
         ]);
 
         self::request('DELETE', "/branches/{$branchId}", null, "deleting Neon branch {$branchId}", throw: false);
 
-        NeonTiming::log('neon.branch.delete.end', [
+        Timing::log('neon.branch.delete.end', [
             'branch_id' => $branchId,
             'duration_ms' => self::durationMs($startedAt),
         ]);
@@ -106,11 +108,11 @@ final class NeonApi
             '60',
             '--request',
             $method,
-            'https://console.neon.tech/api/v2/projects/'.NeonEnvironment::required('NEON_PROJECT_ID').$path,
+            'https://console.neon.tech/api/v2/projects/'.Environment::required('NEON_PROJECT_ID').$path,
             '--header',
             'Accept: application/json',
             '--header',
-            'Authorization: Bearer '.NeonEnvironment::required('NEON_API_KEY'),
+            'Authorization: Bearer '.Environment::required('NEON_API_KEY'),
         ];
 
         if ($payload !== null) {
@@ -161,9 +163,6 @@ final class NeonApi
 
     /**
      * @param  array<mixed, mixed>  $endpoints
-     */
-    /**
-     * @param  array<mixed, mixed>  $endpoints
      * @return array{0: ?string, 1: ?string}
      */
     private static function endpointHosts(array $endpoints): array
@@ -188,8 +187,8 @@ final class NeonApi
             }
         }
 
-        $directHost ??= $poolerHost !== null ? NeonEnvironment::directHost($poolerHost) : null;
-        $poolerHost ??= $directHost !== null ? NeonEnvironment::poolerHost($directHost) : null;
+        $directHost ??= $poolerHost !== null ? NeonSettings::directHost($poolerHost) : null;
+        $poolerHost ??= $directHost !== null ? NeonSettings::poolerHost($directHost) : null;
 
         return [$directHost, $poolerHost];
     }

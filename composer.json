@@ -1,6 +1,6 @@
 {
     "name": "emaadali/pest-neondb-plugin",
-    "description": "Pest plugin for isolating Laravel parallel tests with Neon database branches.",
+    "description": "Pest plugin for isolating Laravel parallel and concurrent test runs with Neon branches or local Postgres databases.",
     "keywords": [
         "php",
         "framework",
@@ -21,7 +21,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Emaadali\\PestNeondbPlugin\\": "src/"
+            "Emaadali\\PestDatabaseIsolation\\": "src/"
         },
         "files": [
             "src/Autoload.php"
@@ -57,7 +57,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Emaadali\\PestNeondbPlugin\\NeonTestingServiceProvider"
+                "Emaadali\\PestDatabaseIsolation\\TestingDatabaseServiceProvider"
             ]
         }
     }

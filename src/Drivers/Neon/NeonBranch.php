@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Emaadali\PestNeondbPlugin;
+namespace Emaadali\PestDatabaseIsolation\Drivers\Neon;
 
 final readonly class NeonBranch
 {

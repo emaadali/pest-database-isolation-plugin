@@ -1,18 +1,35 @@
 <?php
 
-use Emaadali\PestNeondbPlugin\NeonApi;
-use Emaadali\PestNeondbPlugin\NeonBranch;
-use Emaadali\PestNeondbPlugin\NeonEnvironment;
+use Emaadali\PestDatabaseIsolation\Drivers\DriverManager;
+use Emaadali\PestDatabaseIsolation\Drivers\Neon\NeonApi;
+use Emaadali\PestDatabaseIsolation\Drivers\Neon\NeonBranch;
+use Emaadali\PestDatabaseIsolation\Drivers\Neon\NeonSettings;
+use Emaadali\PestDatabaseIsolation\Drivers\Postgres\PostgresDriver;
+use Emaadali\PestDatabaseIsolation\Support\Environment;
+
+function restoreEnvironment(string $key, ?string $value): void
+{
+    if ($value === null) {
+        putenv($key);
+        unset($_ENV[$key], $_SERVER[$key]);
+
+        return;
+    }
+
+    putenv("{$key}={$value}");
+    $_ENV[$key] = $value;
+    $_SERVER[$key] = $value;
+}
 
 it('normalizes quoted environment values from .env', function (): void {
-    $directory = sys_get_temp_dir().'/pest-neondb-plugin-'.bin2hex(random_bytes(4));
+    $directory = sys_get_temp_dir().'/pest-testing-database-'.bin2hex(random_bytes(4));
     mkdir($directory);
     file_put_contents($directory.'/.env', 'NEON_BRANCH_PREFIX="Example App"'.PHP_EOL);
 
     $previous = getcwd();
     chdir($directory);
 
-    expect(NeonEnvironment::optional('NEON_BRANCH_PREFIX'))->toBe('Example App');
+    expect(Environment::optional('NEON_BRANCH_PREFIX'))->toBe('Example App');
 
     chdir($previous);
     unlink($directory.'/.env');
@@ -20,14 +37,14 @@ it('normalizes quoted environment values from .env', function (): void {
 });
 
 it('builds branch names from the configured application name', function (): void {
-    $directory = sys_get_temp_dir().'/pest-neondb-plugin-'.bin2hex(random_bytes(4));
+    $directory = sys_get_temp_dir().'/pest-testing-database-'.bin2hex(random_bytes(4));
     mkdir($directory);
     file_put_contents($directory.'/.env', 'APP_NAME="My Laravel App"'.PHP_EOL);
 
     $previous = getcwd();
     chdir($directory);
 
-    expect(NeonEnvironment::branchName('test-root'))->toStartWith('my-laravel-app-test-root-');
+    expect(NeonSettings::branchName('test-root'))->toStartWith('my-laravel-app-test-root-');
 
     chdir($previous);
     unlink($directory.'/.env');
@@ -61,12 +78,12 @@ it('synthesizes a pooler host when no pooler host is returned', function (): voi
 });
 
 it('converts pooled endpoint hosts to direct hosts', function (): void {
-    expect(NeonEnvironment::directHost('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech'))
+    expect(NeonSettings::directHost('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech'))
         ->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
 });
 
 it('converts direct endpoint hosts to pooler hosts', function (): void {
-    expect(NeonEnvironment::poolerHost('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech'))
+    expect(NeonSettings::poolerHost('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech'))
         ->toBe('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech');
 });
 
@@ -78,18 +95,18 @@ it('uses the pooler host for worker database connections', function (): void {
         poolerHost: 'ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech',
     );
 
-    NeonEnvironment::applyDatabaseEnvironment($branch);
+    NeonSettings::applyDatabaseEnvironment($branch);
 
-    expect(NeonEnvironment::optional('DB_HOST'))
+    expect(Environment::optional('DB_HOST'))
         ->toBe('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech')
-        ->and(NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_HOST'))
+        ->and(Environment::optional('NEON_TEST_WORKER_BRANCH_HOST'))
         ->toBe('ep-restless-field-atfmtke7-pooler.c-9.us-east-1.aws.neon.tech')
-        ->and(NeonEnvironment::optional('NEON_TEST_WORKER_BRANCH_DIRECT_HOST'))
+        ->and(Environment::optional('NEON_TEST_WORKER_BRANCH_DIRECT_HOST'))
         ->toBe('ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech');
 });
 
 it('uses PgBouncer-compatible database connection options without emulating bindings', function (): void {
-    expect(NeonEnvironment::databaseOptions())->toMatchArray([
+    expect(NeonSettings::databaseOptions())->toMatchArray([
         PDO::PGSQL_ATTR_DISABLE_PREPARES => true,
     ]);
 });
@@ -98,13 +115,69 @@ it('detects parallel CLI requests from argv', function (): void {
     $originalArgv = $_SERVER['argv'] ?? null;
     $_SERVER['argv'] = ['vendor/bin/pest', '--parallel'];
 
-    expect(NeonEnvironment::commandRequestsParallel())->toBeTrue();
+    expect(Environment::commandRequestsParallel())->toBeTrue();
 
     if ($originalArgv === null) {
         unset($_SERVER['argv']);
     } else {
         $_SERVER['argv'] = $originalArgv;
     }
+});
+
+it('infers the Neon driver from a database URL when no driver is configured', function (): void {
+    $previousDriver = Environment::optional('PEST_TEST_DATABASE_DRIVER');
+    $previousUrl = Environment::optional('DB_URL');
+
+    restoreEnvironment('PEST_TEST_DATABASE_DRIVER', null);
+    restoreEnvironment('DB_URL', 'postgres://user:pass@ep-restless-field-atfmtke7.c-9.us-east-1.aws.neon.tech/app');
+
+    expect(DriverManager::driverName())->toBe('neon');
+
+    restoreEnvironment('PEST_TEST_DATABASE_DRIVER', $previousDriver);
+    restoreEnvironment('DB_URL', $previousUrl);
+});
+
+it('defaults to the pgsql driver for a local database host', function (): void {
+    $previousDriver = Environment::optional('PEST_TEST_DATABASE_DRIVER');
+    $previousUrl = Environment::optional('DB_URL');
+    $previousHost = Environment::optional('DB_HOST');
+
+    restoreEnvironment('PEST_TEST_DATABASE_DRIVER', null);
+    restoreEnvironment('DB_URL', null);
+    restoreEnvironment('DB_HOST', '127.0.0.1');
+
+    expect(DriverManager::driverName())->toBe('pgsql');
+
+    restoreEnvironment('PEST_TEST_DATABASE_DRIVER', $previousDriver);
+    restoreEnvironment('DB_URL', $previousUrl);
+    restoreEnvironment('DB_HOST', $previousHost);
+});
+
+it('allows the test database isolation driver to be configured explicitly', function (): void {
+    $previousDriver = Environment::optional('PEST_TEST_DATABASE_DRIVER');
+
+    restoreEnvironment('PEST_TEST_DATABASE_DRIVER', 'pgsql');
+
+    expect(DriverManager::driverName())->toBe('pgsql');
+
+    restoreEnvironment('PEST_TEST_DATABASE_DRIVER', $previousDriver);
+});
+
+it('builds run-scoped Postgres worker database names', function (): void {
+    $previousRunId = Environment::optional('PEST_TEST_RUN_ID');
+
+    restoreEnvironment('PEST_TEST_RUN_ID', 'abcdef12');
+
+    $method = new ReflectionMethod(PostgresDriver::class, 'workerDatabaseName');
+    $method->setAccessible(true);
+
+    $database = $method->invoke(new PostgresDriver, 'example-application-testing-database-with-a-long-name', '3');
+
+    expect($database)
+        ->toEndWith('_pest_abcdef12_test_3')
+        ->and(strlen($database))->toBeLessThanOrEqual(63);
+
+    restoreEnvironment('PEST_TEST_RUN_ID', $previousRunId);
 });
 
 it('can represent a branch created without an endpoint', function (): void {

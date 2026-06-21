@@ -2,24 +2,36 @@
 
 declare(strict_types=1);
 
-namespace Emaadali\PestNeondbPlugin;
+namespace Emaadali\PestDatabaseIsolation;
 
-function usesNeonTestingRootBranch(): void
+use Emaadali\PestDatabaseIsolation\Drivers\DriverManager;
+use Emaadali\PestDatabaseIsolation\Support\Environment;
+use Emaadali\PestDatabaseIsolation\Support\Timing;
+
+function usesDatabaseTestingIsolation(): void
 {
-    NeonTestingRootBranch::initialize();
+    Environment::set('PEST_TEST_DATABASE_ISOLATION', 'true');
+
+    DriverManager::resolve()->initializeRoot();
 
     pest()->beforeEach(function (): void {
-        $GLOBALS['__pest_neondb_test_started_at'] = hrtime(true);
-        NeonTiming::log('pest.test.beforeEach.start');
-
-        NeonTiming::log('pest.test.beforeEach.end');
+        $GLOBALS['__pest_testing_database_started_at'] = hrtime(true);
+        Timing::log('pest.test.beforeEach');
     });
 
     pest()->afterEach(function (): void {
-        $startedAt = $GLOBALS['__pest_neondb_test_started_at'] ?? null;
+        $startedAt = $GLOBALS['__pest_testing_database_started_at'] ?? null;
 
-        NeonTiming::log('pest.test.afterEach', [
+        Timing::log('pest.test.afterEach', [
             'duration_ms' => is_int($startedAt) ? round((hrtime(true) - $startedAt) / 1_000_000, 3) : null,
         ]);
     });
+}
+
+/**
+ * @deprecated Use usesDatabaseTestingIsolation() instead.
+ */
+function usesNeonTestingRootBranch(): void
+{
+    usesDatabaseTestingIsolation();
 }
