@@ -6,7 +6,6 @@ namespace Emaadali\PestDatabaseIsolation\Drivers\Neon;
 
 use Emaadali\PestDatabaseIsolation\Drivers\TestingDatabaseDriver;
 use Emaadali\PestDatabaseIsolation\Support\Environment;
-use Emaadali\PestDatabaseIsolation\Support\Timing;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -25,10 +24,6 @@ final class NeonDriver implements TestingDatabaseDriver
         $this->assertConfigured();
 
         if (Environment::optional('NEON_TEST_PARENT_BRANCH_ID') !== null) {
-            Timing::log('neon.root.skipped.existing-parent', [
-                'parent_branch_id' => Environment::optional('NEON_TEST_PARENT_BRANCH_ID'),
-            ]);
-
             return;
         }
 
@@ -46,12 +41,6 @@ final class NeonDriver implements TestingDatabaseDriver
             Environment::set('NEON_TEST_PARENT_BRANCH_ID', Environment::required('NEON_PARENT_BRANCH_ID'));
             NeonSettings::applyDatabaseEnvironment($workerBranch);
 
-            Timing::log('neon.root.nonparallel-worker.applied', [
-                'worker_branch_id' => $workerBranch->id,
-                'host' => $workerBranch->host,
-                'pooler_host' => $workerBranch->poolerHost,
-            ]);
-
             register_shutdown_function(static fn () => NeonApi::deleteBranch($workerBranch->id));
 
             return;
@@ -65,10 +54,6 @@ final class NeonDriver implements TestingDatabaseDriver
 
         Environment::set('NEON_TEST_PARENT_BRANCH_ID', $branch->id);
 
-        Timing::log('neon.root.initialized', [
-            'parent_branch_id' => $branch->id,
-        ]);
-
         register_shutdown_function(static fn () => NeonApi::deleteBranch($branch->id));
     }
 
@@ -79,16 +64,8 @@ final class NeonDriver implements TestingDatabaseDriver
 
     public function applyWorkerFromEnvironment(): void
     {
-        $configuredHost = Environment::required('NEON_TEST_WORKER_BRANCH_HOST');
-
-        $this->applyConnection($configuredHost);
+        $this->applyConnection(Environment::required('NEON_TEST_WORKER_BRANCH_HOST'));
         RefreshDatabaseState::$migrated = true;
-
-        Timing::log('neon.worker.applied-from-environment', [
-            'configured_host' => $configuredHost,
-            'direct_host' => Environment::optional('NEON_TEST_WORKER_BRANCH_DIRECT_HOST'),
-            'pooler_host' => Environment::optional('NEON_TEST_WORKER_BRANCH_POOLER_HOST'),
-        ]);
     }
 
     public function applyWorker(string $token): void

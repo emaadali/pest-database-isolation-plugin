@@ -5,23 +5,12 @@ declare(strict_types=1);
 namespace Emaadali\PestDatabaseIsolation\Drivers\Neon;
 
 use Emaadali\PestDatabaseIsolation\Support\Environment;
-use Emaadali\PestDatabaseIsolation\Support\Timing;
 use RuntimeException;
 
 final class NeonApi
 {
     public static function createBranch(string $parentBranchId, string $name, bool $schemaOnly = false, ?int $ttlSeconds = null, bool $withEndpoint = true): NeonBranch
     {
-        $startedAt = hrtime(true);
-
-        Timing::log('neon.branch.create.start', [
-            'parent_branch_id' => $parentBranchId,
-            'branch_name' => $name,
-            'schema_only' => $schemaOnly,
-            'ttl_seconds' => $ttlSeconds,
-            'with_endpoint' => $withEndpoint,
-        ]);
-
         $branch = [
             'parent_id' => $parentBranchId,
             'name' => $name,
@@ -62,33 +51,12 @@ final class NeonApi
             throw new RuntimeException('Neon create branch response is missing required branch or endpoint fields.');
         }
 
-        $branch = new NeonBranch($id, $branchName, $host ?? '', $poolerHost);
-
-        Timing::log('neon.branch.create.end', [
-            'branch_id' => $branch->id,
-            'branch_name' => $branch->name,
-            'host' => $branch->host,
-            'pooler_host' => $branch->poolerHost,
-            'duration_ms' => self::durationMs($startedAt),
-        ]);
-
-        return $branch;
+        return new NeonBranch($id, $branchName, $host ?? '', $poolerHost);
     }
 
     public static function deleteBranch(string $branchId): void
     {
-        $startedAt = hrtime(true);
-
-        Timing::log('neon.branch.delete.start', [
-            'branch_id' => $branchId,
-        ]);
-
         self::request('DELETE', "/branches/{$branchId}", null, "deleting Neon branch {$branchId}", throw: false);
-
-        Timing::log('neon.branch.delete.end', [
-            'branch_id' => $branchId,
-            'duration_ms' => self::durationMs($startedAt),
-        ]);
     }
 
     /**
@@ -191,10 +159,5 @@ final class NeonApi
         $poolerHost ??= $directHost !== null ? NeonSettings::poolerHost($directHost) : null;
 
         return [$directHost, $poolerHost];
-    }
-
-    private static function durationMs(int $startedAt): float
-    {
-        return round((hrtime(true) - $startedAt) / 1_000_000, 3);
     }
 }

@@ -28,14 +28,6 @@ PEST_TEST_DATABASE_DRIVER=neon
 PEST_TEST_DATABASE_DRIVER=pgsql
 ```
 
-The previous helper still works but is deprecated in favor of `usesDatabaseTestingIsolation()`:
-
-```php
-use function Emaadali\PestDatabaseIsolation\usesNeonTestingRootBranch;
-
-usesNeonTestingRootBranch();
-```
-
 ## Neon Driver
 
 Configure Neon:

@@ -6,7 +6,6 @@ namespace Emaadali\PestDatabaseIsolation\Drivers\Postgres;
 
 use Emaadali\PestDatabaseIsolation\Drivers\TestingDatabaseDriver;
 use Emaadali\PestDatabaseIsolation\Support\Environment;
-use Emaadali\PestDatabaseIsolation\Support\Timing;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use PDO;
@@ -31,10 +30,6 @@ final class PostgresDriver implements TestingDatabaseDriver
 
         $database = $this->createWorkerDatabase('single');
         $this->setWorkerEnvironment($database);
-
-        Timing::log('pgsql.root.nonparallel-worker.applied', [
-            'database' => $database,
-        ]);
     }
 
     public function hasWorkerEnvironment(): bool
@@ -44,13 +39,7 @@ final class PostgresDriver implements TestingDatabaseDriver
 
     public function applyWorkerFromEnvironment(): void
     {
-        $database = Environment::required('PEST_TEST_WORKER_DATABASE');
-
-        $this->applyConnection($database);
-
-        Timing::log('pgsql.worker.applied-from-environment', [
-            'database' => $database,
-        ]);
+        $this->applyConnection(Environment::required('PEST_TEST_WORKER_DATABASE'));
     }
 
     public function applyWorker(string $token): void
@@ -96,15 +85,7 @@ final class PostgresDriver implements TestingDatabaseDriver
 
         register_shutdown_function(function () use ($database): void {
             $this->dropDatabase($this->adminConnection($this->connectionSettings()), $database);
-
-            Timing::log('pgsql.database.drop.shutdown', [
-                'database' => $database,
-            ]);
         });
-
-        Timing::log('pgsql.database.created', [
-            'database' => $database,
-        ]);
 
         return $database;
     }
