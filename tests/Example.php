@@ -7,6 +7,8 @@ use Emaadali\PestDatabaseIsolation\Drivers\Neon\NeonSettings;
 use Emaadali\PestDatabaseIsolation\Drivers\Postgres\PostgresDriver;
 use Emaadali\PestDatabaseIsolation\Support\Environment;
 
+use function Emaadali\PestDatabaseIsolation\testRunId;
+
 function restoreEnvironment(string $key, ?string $value): void
 {
     if ($value === null) {
@@ -122,6 +124,28 @@ it('detects parallel CLI requests from argv', function (): void {
     } else {
         $_SERVER['argv'] = $originalArgv;
     }
+});
+
+it('exposes a stable test run id for external test artifacts', function (): void {
+    $previousRunId = Environment::optional('PEST_TEST_RUN_ID');
+    $directory = sys_get_temp_dir().'/pest-testing-database-'.bin2hex(random_bytes(4));
+    mkdir($directory);
+
+    $previous = getcwd();
+    chdir($directory);
+    restoreEnvironment('PEST_TEST_RUN_ID', null);
+
+    $runId = testRunId();
+
+    expect($runId)
+        ->toMatch('/^[a-f0-9]{8}$/')
+        ->and(testRunId())->toBe($runId)
+        ->and(Environment::optional('PEST_TEST_RUN_ID'))->toBe($runId)
+        ->and(getenv('PEST_TEST_RUN_ID'))->toBe($runId);
+
+    chdir($previous);
+    rmdir($directory);
+    restoreEnvironment('PEST_TEST_RUN_ID', $previousRunId);
 });
 
 it('infers the Neon driver from a database URL when no driver is configured', function (): void {

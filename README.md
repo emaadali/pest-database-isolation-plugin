@@ -18,6 +18,18 @@ use function Emaadali\PestDatabaseIsolation\usesDatabaseTestingIsolation;
 usesDatabaseTestingIsolation();
 ```
 
+The plugin also exposes a stable run id for isolating other test artifacts created during the same Pest command:
+
+```php
+use function Emaadali\PestDatabaseIsolation\testRunId;
+
+pest()->browser()->screenshots(
+    dirname(__DIR__).'/tests/Browser/Screenshots/'.testRunId()
+);
+```
+
+The run id is stored in `PEST_TEST_RUN_ID` and is shared with Laravel parallel test workers.
+
 The plugin auto-selects a driver. If your `DB_URL`, `DATABASE_URL`, or `DB_HOST` contains `neon.tech`, it uses the `neon` driver. Otherwise it uses the `pgsql` driver.
 
 You can configure the driver explicitly:

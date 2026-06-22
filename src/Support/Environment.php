@@ -65,6 +65,22 @@ final class Environment
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
+    public static function testRunId(): string
+    {
+        $runId = $_SERVER['PEST_TEST_RUN_ID']
+            ?? $_ENV['PEST_TEST_RUN_ID']
+            ?? getenv('PEST_TEST_RUN_ID');
+
+        if (is_string($runId) && $runId !== '') {
+            return $runId;
+        }
+
+        $runId = strtolower(bin2hex(random_bytes(4)));
+        self::set('PEST_TEST_RUN_ID', $runId);
+
+        return $runId;
+    }
+
     public static function set(string $key, string $value): void
     {
         putenv("{$key}={$value}");

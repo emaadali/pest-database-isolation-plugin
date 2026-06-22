@@ -22,6 +22,7 @@ final class NeonDriver implements TestingDatabaseDriver
 
     public function initializeRoot(): void
     {
+        Environment::testRunId();
         $this->assertConfigured();
 
         if (Environment::optional('NEON_TEST_PARENT_BRANCH_ID') !== null) {

@@ -23,7 +23,7 @@ final class PostgresDriver implements TestingDatabaseDriver
 
     public function initializeRoot(): void
     {
-        $this->ensureRunId();
+        Environment::testRunId();
 
         if (Environment::commandRequestsParallel()) {
             return;
@@ -64,15 +64,7 @@ final class PostgresDriver implements TestingDatabaseDriver
 
     private function ensureRunId(): string
     {
-        $runId = Environment::optional('PEST_TEST_RUN_ID');
-        if ($runId !== null) {
-            return $runId;
-        }
-
-        $runId = strtolower(bin2hex(random_bytes(4)));
-        Environment::set('PEST_TEST_RUN_ID', $runId);
-
-        return $runId;
+        return Environment::testRunId();
     }
 
     private function createWorkerDatabase(string $token): string
