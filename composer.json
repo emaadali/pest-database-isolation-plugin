@@ -1,5 +1,5 @@
 {
-    "name": "emaadali/pest-neondb-plugin",
+    "name": "emaadali/pest-database-isolation-plugin",
     "description": "Pest plugin for isolating Laravel parallel and concurrent test runs with Neon branches or local Postgres databases.",
     "keywords": [
         "php",

@@ -5,7 +5,7 @@ Laravel-focused Pest plugin for isolating concurrent test runs and parallel test
 ## Installation
 
 ```bash
-composer require --dev emaadali/pest-neondb-plugin
+composer require --dev emaadali/pest-database-isolation-plugin
 ```
 
 ## Usage
